@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<script>
+    var currentPosition = {x:180, y:150} ;
+window.addEventListener("load", function(evt) {
+    var output = document.getElementById("output");
+    var input = document.getElementById("input");
+    var ws;
+    var print = function(message) {
+        var d = document.createElement("div");
+        d.innerHTML = message;
+        output.appendChild(d);
+    };
+    document.getElementById("open").onclick = function(evt) {
+        if (ws) {
+            return false;
+        }
+        ws = new WebSocket("{{.}}");
+        ws.onopen = function(evt) {
+            print("OPEN");
+        }
+        ws.onclose = function(evt) {
+            print("CLOSE");
+            ws = null;
+        }
+        ws.onmessage = function(evt) {
+            message = JSON.parse(evt.data);
+            if (message.type === "move"){
+                var c = document.getElementById("myCanvas");
+                var ctx = c.getContext("2d");
+                //Move me
+                ctx.clearRect(0, 0, c.width, c.height);
+                ctx.fillStyle = "#FF6600";
+                ctx.fillText("Beta: " + Math.round(Number(message.data)), 10, 140);
+                ctx.beginPath();
+                var value = Number(message.data);
+                if (value > 0){
+                    currentPosition.x += 1;
+                }else{
+                    currentPosition.x -= 1;
+                }
+                currentPosition.x = Math.max(currentPosition.x, 0);
+                currentPosition.x = Math.min(currentPosition.x, c.width);
+                ctx.fillRect(currentPosition.x, currentPosition.y, 90, 90);
+            }else{
+                print(message.data);
+            }
+        }
+        ws.onerror = function(evt) {
+            print("ERROR: " + evt.data);
+        }
+        return false;
+    };
+    document.getElementById("send").onclick = function(evt) {
+        if (!ws) {
+            return false;
+        }
+        print("SEND: " + input.value);
+        ws.send(input.value);
+        return false;
+    };
+    document.getElementById("close").onclick = function(evt) {
+        if (!ws) {
+            return false;
+        }
+        ws.close();
+        return false;
+    };
+});
+</script>
+</head>
+<body>
+<table>
+<tr><td valign="top" width="50%">
+<p>Click "Open" to create a connection to the server, 
+"Send" to send a message to the server and "Close" to close the connection. 
+You can change the message and send multiple times.
+<p>
+<form>
+<button id="open">Open</button>
+<button id="close">Close</button>
+<p><input id="input" type="text" value="Hello world!">
+<button id="send">Send</button>
+</form>
+</td><td valign="top" width="50%">
+<canvas id="myCanvas" width="360" height="450" style="border:1px solid #d3d3d3;">
+</canvas>
+<div id="output"></div>
+</td></tr></table>
+</body>
+</html>
