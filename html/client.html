@@ -3,14 +3,28 @@
 <meta charset="utf-8">
 <script src="/static/js/common.js"></script>
 <script>
+var up = false;
+var down = false;
 screen.orientation.lock('landscape');
 window.addEventListener("load", function(evt) {
+	document.getElementById("break").addEventListener("touchstart", touchHandlerBreak, false);
+	//document.getElementById("div").addEventListener("touchmove", touchHandler, false);
+	document.getElementById("break").addEventListener("touchend", touchHandlerBreak, false);
+	
+	document.getElementById("run").addEventListener("touchstart", touchHandlerRun, false);
+	//document.getElementById("div").addEventListener("touchmove", touchHandler, false);
+	document.getElementById("run").addEventListener("touchend", touchHandlerRun, false);
+
 	function deviceOrientationListener(event) {
 		//Send to the server the current alpha
 		var newmessage = JSON.stringify({
 			t: EnumMessage.MOVE,
 			s: 0,
-			m: ""+event.beta
+			m: JSON.stringify({
+				r: event.beta,
+				u: up,
+				d: down
+			})
 		})
 		ws.send(newmessage);
   }
@@ -39,11 +53,47 @@ window.addEventListener("load", function(evt) {
 	}
 	return false;
 });
+
+function touchHandlerBreak(e) {
+  if (e.type == "touchstart") {
+    down = true;
+    up = false;
+  //} else if (e.type == "touchmove") {
+  //  alert("You moved your finger!");
+  } else if (e.type == "touchend" || e.type == "touchcancel") {
+    down = false;
+    up = false;
+  }
+}
+
+function print(e){
+	var div = document.createElement("div");
+	div.innerHTML = e;
+	document.getElementById("debug").appendChild(div);
+}
+
+function touchHandlerRun(e) {
+  print(e);
+  if (e.type == "touchstart") {
+    down = false;
+    up = true;
+  //} else if (e.type == "touchmove") {
+  //  alert("You moved your finger!");
+  } else if (e.type == "touchend" || e.type == "touchcancel") {
+    down = false;
+    up = false;
+  }
+}
 </script>
 </head>
 <body>
 <h2>Hi, client, this is now your gamepad.</h2>
 Start Moving your gamepad to control the square on the screen
+<div style="display:flex">
+<div id="break" style="background-color:red;width:100px; height:100px"> </div>
+<div style="display:flex; width:100%;"></div>
+<div id="run" style="background-color:blue;width:100px; height:100px"></div>
+</div>
 <div id="debug"></div>
 </body>
 </html>
