@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <head>
 <meta charset="utf-8">
+<script src="/static/js/common.js"></script>
 <script>
 screen.orientation.lock('landscape');
 window.addEventListener("load", function(evt) {
 	function deviceOrientationListener(event) {
 		//Send to the server the current alpha
-		ws.send(event.beta)
+		var newmessage = JSON.stringify({
+			t: EnumMessage.MOVE,
+			s: 0,
+			m: ""+event.beta
+		})
+		ws.send(newmessage);
   }
 
   if (window.DeviceOrientationEvent) {
@@ -38,5 +44,6 @@ window.addEventListener("load", function(evt) {
 <body>
 <h2>Hi, client, this is now your gamepad.</h2>
 Start Moving your gamepad to control the square on the screen
+<div id="debug"></div>
 </body>
 </html>
