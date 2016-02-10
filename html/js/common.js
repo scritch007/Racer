@@ -11,3 +11,8 @@ var EnumControl={
 	StartServerSession: 2,
 	NewPlayerConnected: 3,
 };
+
+var EnumMove = {
+	Moving: 0,
+	Collision: 1,
+}

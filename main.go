@@ -21,10 +21,15 @@ var addr = flag.String("addr", ":8080", "http service address")
 
 var upgrader = websocket.Upgrader{} // use default options
 
-var serverConnections map[string]*websocket.Conn
+type serverConnection struct {
+	server *websocket.Conn
+	client *websocket.Conn
+}
+
+var serverConnections map[string]*serverConnection
 
 func init() {
-	serverConnections = make(map[string]*websocket.Conn)
+	serverConnections = make(map[string]*serverConnection)
 }
 
 func serverWS(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +52,11 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c.WriteMessage(1, []byte(m))
-	serverConnections[id] = c
+	newServerConnection := new(serverConnection)
+	newServerConnection.server = c
+	newServerConnection.client = nil
+
+	serverConnections[id] = newServerConnection
 
 	//Send id to the server
 	_, _, err = c.ReadMessage()
@@ -62,16 +71,16 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	for {
-		mt, message, err := c.ReadMessage()
+		_, message, err := c.ReadMessage()
 		if err != nil {
 			tools.LOG_ERROR.Println("read:", err)
 			break
 		}
-		tools.LOG_ERROR.Printf("recv: %s", message)
-		err = c.WriteMessage(mt, []byte(`{"type":"message", "data":`+string(message)+"}"))
-		if err != nil {
-			tools.LOG_ERROR.Println("write:", err)
-			break
+		tools.LOG_DEBUG.Printf("Server recv: %s", message)
+		if nil != newServerConnection.client {
+			newServerConnection.client.WriteMessage(1, message)
+		} else {
+			tools.LOG_DEBUG.Println("Client is still empty")
 		}
 	}
 }
@@ -87,6 +96,7 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 	serverSocket, _ := serverConnections[id]
+	serverSocket.client = c
 
 	for {
 		mt, message, err := c.ReadMessage()
@@ -107,14 +117,8 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		serverSocket.WriteMessage(mt, []byte(m))
-
-		tools.LOG_ERROR.Printf("recv: %s", message)
-		err = c.WriteMessage(mt, message)
-		if err != nil {
-			tools.LOG_ERROR.Println("write:", err)
-			break
-		}
+		serverSocket.server.WriteMessage(mt, []byte(m))
+		//tools.LOG_DEBUG.Printf("recv: %s", message)
 	}
 }
 

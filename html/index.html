@@ -180,6 +180,13 @@
           if (Util.overlap(playerX, playerW, sprite.offset + spriteW/2 * (sprite.offset > 0 ? 1 : -1), spriteW)) {
             speed = maxSpeed/5;
             position = Util.increase(playerSegment.p1.world.z, -playerZ, trackLength); // stop in front of sprite (at front of segment)
+
+            var newmessage = JSON.stringify({
+                t: EnumMessage.MOVE,
+                s: EnumMove.Collision,
+                m: "200"
+            });
+            ws.send(newmessage);
             break;
           }
         }
@@ -192,6 +199,12 @@
           if (Util.overlap(playerX, playerW, car.offset, carW, 0.8)) {
             speed    = car.speed * (car.speed/speed);
             position = Util.increase(car.z, -playerZ, trackLength);
+            var newmessage = JSON.stringify({
+                t: EnumMessage.MOVE,
+                s: EnumMove.Collision,
+                m: "200"
+            });
+            ws.send(newmessage);
             break;
           }
         }

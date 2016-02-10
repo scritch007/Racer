@@ -10,7 +10,7 @@ window.addEventListener("load", function(evt) {
 	document.getElementById("break").addEventListener("touchstart", touchHandlerBreak, false);
 	//document.getElementById("div").addEventListener("touchmove", touchHandler, false);
 	document.getElementById("break").addEventListener("touchend", touchHandlerBreak, false);
-	
+
 	document.getElementById("run").addEventListener("touchstart", touchHandlerRun, false);
 	//document.getElementById("div").addEventListener("touchmove", touchHandler, false);
 	document.getElementById("run").addEventListener("touchend", touchHandlerRun, false);
@@ -19,7 +19,7 @@ window.addEventListener("load", function(evt) {
 		//Send to the server the current alpha
 		var newmessage = JSON.stringify({
 			t: EnumMessage.MOVE,
-			s: 0,
+			s: EnumMove.Moving,
 			m: JSON.stringify({
 				r: event.beta,
 				u: up,
@@ -46,7 +46,16 @@ window.addEventListener("load", function(evt) {
 		ws = null;
 	}
 	ws.onmessage = function(evt) {
-		console.log("RESPONSE: " + evt.data);
+		var jsonObject = JSON.parse(evt.data);
+		print(evt.data);
+		if (jsonObject.t==EnumMessage.MOVE){
+			if (EnumMove.Collision == jsonObject.s){
+				window.navigator.vibrate(Number(jsonObject.m));
+			}
+		}else{
+			console.log("RESPONSE: " + evt.data);
+		}
+
 	}
 	ws.onerror = function(evt) {
 		console.log("ERROR: " + evt.data);
