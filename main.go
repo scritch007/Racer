@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -13,11 +14,14 @@ import (
 	"github.com/boombuler/barcode"
 	"github.com/boombuler/barcode/qr"
 
+	"github.com/jmcvetta/randutil"
+
 	"github.com/scritch007/Racer/types"
 	"github.com/scritch007/go-tools"
 )
 
 var addr = flag.String("addr", ":8080", "http service address")
+var debug = flag.Bool("debug", false, "Turn into debug mode")
 
 var upgrader = websocket.Upgrader{} // use default options
 
@@ -33,14 +37,14 @@ func init() {
 }
 
 func serverWS(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		tools.LOG_ERROR.Print("upgrade:", err)
 		return
 	}
 
-	//TODO generate random ID
-	id := "123456"
 	sessionMessage := types.Message{
 		Type:    types.EnumMessageControl,
 		SubType: types.EnumControlNewInstance,
@@ -122,17 +126,24 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
+func server(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
 	tmpl, err := template.ParseFiles("./html/index.html")
 	if err != nil {
 		panic(err)
+	}
+	var socketProto = "ws"
+	if strings.Contains(r.Proto, "HTTPS") {
+		socketProto = "wss"
 	}
 	values := struct {
 		WSocketURL string
 		QRCodeUrl  string
 	}{
-		WSocketURL: "ws://" + r.Host + "/server",
-		QRCodeUrl:  "qrcode/123456.png",
+		WSocketURL: socketProto + "://" + r.Host + "/server.ws/" + id,
+		QRCodeUrl:  "/qrcode/" + id + ".png",
 	}
 	err = tmpl.Execute(w, values)
 	if nil != err {
@@ -148,14 +159,23 @@ func client(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	tmpl.Execute(w, "ws://"+r.Host+"/client.ws/"+id)
+	var socketProto = "ws"
+	if strings.Contains(r.Proto, "HTTPS") {
+		socketProto = "wss"
+	}
+	tmpl.Execute(w, socketProto+"://"+r.Host+"/client.ws/"+id)
 }
 
 func qrcodeHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	qrcode, err := qr.Encode("http://"+r.Host+"/client/"+id, qr.L, qr.Auto)
+	var proto = "http"
+	if strings.Contains(r.Proto, "HTTPS") {
+		proto = "httpss"
+	}
+
+	qrcode, err := qr.Encode(proto+"://"+r.Host+"/client/"+id, qr.L, qr.Auto)
 	if err != nil {
 		tools.LOG_ERROR.Println(err)
 	} else {
@@ -175,6 +195,17 @@ func serveFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "./html/"+filePath)
 }
 
+func home(w http.ResponseWriter, r *http.Request) {
+	var id string
+	if *debug {
+		id = "123456"
+	} else {
+		id, _ = randutil.AlphaString(20)
+	}
+	//Redirect the server to a new instance
+	http.Redirect(w, r, "/server/"+id, http.StatusFound)
+}
+
 func main() {
 	tools.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 
@@ -182,7 +213,8 @@ func main() {
 	tools.LOG_ERROR.SetFlags(0)
 	r := mux.NewRouter()
 	r.HandleFunc("/client/{id}", client)
-	r.HandleFunc("/server", serverWS)
+	r.HandleFunc("/server/{id}", server)
+	r.HandleFunc("/server.ws/{id}", serverWS)
 	r.HandleFunc("/client.ws/{id}", clientWS)
 	r.HandleFunc("/qrcode/{id}.png", qrcodeHandler)
 	r.HandleFunc("/static/{file:.*}", serveFile)

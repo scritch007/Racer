@@ -150,7 +150,7 @@ var Game = {  // a modified version of the game loop from my previous boulderdas
       var name = names[n];
       result[n] = document.createElement('img');
       Dom.on(result[n], 'load', onload);
-      result[n].src = "static/images/" + name + ".png";
+      result[n].src = "/static/images/" + name + ".png";
     }
   },
 
