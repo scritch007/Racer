@@ -100,6 +100,11 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 	serverSocket, _ := serverConnections[id]
+	if nil == serverSocket.client {
+		_, _, _ = c.ReadMessage()
+		c.WriteMessage(0, "Someone is already there")
+		return
+	}
 	serverSocket.client = c
 
 	for {
@@ -124,6 +129,7 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 		serverSocket.server.WriteMessage(mt, []byte(m))
 		//tools.LOG_DEBUG.Printf("recv: %s", message)
 	}
+	serverSocket.client = nil
 }
 
 func server(w http.ResponseWriter, r *http.Request) {
