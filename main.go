@@ -193,7 +193,7 @@ func qrcodeHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		tools.LOG_ERROR.Println(err)
 	} else {
-		qrcode, err = barcode.Scale(qrcode, 100, 100)
+		qrcode, err = barcode.Scale(qrcode, 150, 150)
 		if err != nil {
 			tools.LOG_ERROR.Println(err)
 		} else {
