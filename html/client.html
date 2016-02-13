@@ -5,8 +5,37 @@
 <script>
 var up = false;
 var down = false;
-screen.orientation.lock('landscape');
+var ws;
+
+function openWs(){
+	ws = new WebSocket("{{.}}");
+	ws.onopen = function(evt) {
+		console.log("OPEN");
+	}
+	ws.onclose = function(evt) {
+		console.log("CLOSE");
+		ws = null;
+	}
+	ws.onmessage = function(evt) {
+		var jsonObject = JSON.parse(evt.data);
+		print(evt.data);
+		if (jsonObject.t==EnumMessage.MOVE){
+			if (EnumMove.Collision == jsonObject.s){
+				window.navigator.vibrate(Number(jsonObject.m));
+			}
+		}else{
+			console.log("RESPONSE: " + evt.data);
+		}
+
+	}
+	ws.onerror = function(evt) {
+		console.log("ERROR: " + evt.data);
+	}
+}
+
 window.addEventListener("load", function(evt) {
+	openWs();
+	screen.orientation.lock('landscape');
 	document.getElementById("break").addEventListener("touchstart", touchHandlerBreak, false);
 	//document.getElementById("div").addEventListener("touchmove", touchHandler, false);
 	document.getElementById("break").addEventListener("touchend", touchHandlerBreak, false);
@@ -36,30 +65,6 @@ window.addEventListener("load", function(evt) {
   }
 
   var output = document.getElementById("output");
-	var ws;
-	ws = new WebSocket("{{.}}");
-	ws.onopen = function(evt) {
-		console.log("OPEN");
-	}
-	ws.onclose = function(evt) {
-		console.log("CLOSE");
-		ws = null;
-	}
-	ws.onmessage = function(evt) {
-		var jsonObject = JSON.parse(evt.data);
-		print(evt.data);
-		if (jsonObject.t==EnumMessage.MOVE){
-			if (EnumMove.Collision == jsonObject.s){
-				window.navigator.vibrate(Number(jsonObject.m));
-			}
-		}else{
-			console.log("RESPONSE: " + evt.data);
-		}
-
-	}
-	ws.onerror = function(evt) {
-		console.log("ERROR: " + evt.data);
-	}
 	return false;
 });
 

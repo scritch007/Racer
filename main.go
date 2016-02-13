@@ -100,9 +100,9 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 	serverSocket, _ := serverConnections[id]
-	if nil == serverSocket.client {
+	if nil != serverSocket.client {
 		_, _, _ = c.ReadMessage()
-		c.WriteMessage(0, "Someone is already there")
+		c.WriteMessage(0, []byte("Someone is already there"))
 		return
 	}
 	serverSocket.client = c
@@ -132,6 +132,20 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 	serverSocket.client = nil
 }
 
+func getWebSocketProto(r *http.Request) string {
+	var socketProto = "ws"
+	proto := r.Header.Get("X-Forwarded-Proto")
+	tools.LOG_DEBUG.Println(proto + r.Proto)
+	if 0 != len(proto) {
+		if proto == "https" {
+			return "wss"
+		}
+	} else if strings.Contains(r.Proto, "HTTPS") {
+		socketProto = "wss"
+	}
+	return socketProto
+}
+
 func server(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -140,10 +154,7 @@ func server(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	var socketProto = "ws"
-	if strings.Contains(r.Proto, "HTTPS") {
-		socketProto = "wss"
-	}
+	socketProto := getWebSocketProto(r)
 	values := struct {
 		WSocketURL string
 		QRCodeUrl  string
@@ -165,10 +176,7 @@ func client(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	var socketProto = "ws"
-	if strings.Contains(r.Proto, "HTTPS") {
-		socketProto = "wss"
-	}
+	socketProto := getWebSocketProto(r)
 	tmpl.Execute(w, socketProto+"://"+r.Host+"/client.ws/"+id)
 }
 
