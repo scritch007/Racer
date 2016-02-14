@@ -7,18 +7,18 @@ import (
 type EnumMessageType int
 
 const (
-	EnumMessageControl EnumMessageType = 0
-	EnumMessageMove    EnumMessageType = 1
+	EnumMessageControl EnumMessageType = 1
+	EnumMessageMove    EnumMessageType = 2
 	//EnumMessage EnumMessageType = 2
 )
 
 const (
-	EnumControlNewInstance        int = 0
-	EnumControlStartClientSession int = 1
-	EnumControlStartServerSession int = 2
-	EnumControlNewPlayerConnected int = 3
-	EnumControlCreateSession      int = 4
-	EnumControlConnectSession     int = 5
+	EnumControlNewInstance        int = 1
+	EnumControlStartClientSession int = 2
+	EnumControlStartServerSession int = 3
+	EnumControlNewPlayerConnected int = 4
+	EnumControlCreateSession      int = 5
+	EnumControlConnectSession     int = 6
 )
 
 type Message struct {
@@ -37,12 +37,9 @@ func (m *Message) ToString() (string, error) {
 }
 
 func MessageFromString(inString string) (*Message, error) {
-	var m Message
-	err := json.Unmarshal([]byte(inString), &m)
-	if nil != err {
-		return nil, err
-	}
-	return &m, nil
+	m := new(Message)
+	err := json.Unmarshal([]byte(inString), m)
+	return m, err
 }
 
 type NewInstanceConfig struct {

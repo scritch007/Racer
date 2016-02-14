@@ -76,7 +76,9 @@
   </audio>
   <span id="mute"></span>
 
+  <script>var userid = "{{.UserId}}"</script>
   <script src="/static/js/stats.js"></script>
+  <script src="/static/js/DataChannel.js"></script>
   <script src="/static/js/common_racer.js"></script>
   <script src="/static/js/common.js"></script>
   <script>
@@ -186,7 +188,7 @@
                 s: EnumMove.Collision,
                 m: "200"
             });
-            ws.send(newmessage);
+            dc.send(newmessage);
             break;
           }
         }
@@ -204,7 +206,7 @@
                 s: EnumMove.Collision,
                 m: "200"
             });
-            ws.send(newmessage);
+            dc.send(newmessage);
             break;
           }
         }
@@ -631,23 +633,10 @@
       }
     });
 
-    ws = new WebSocket("{{.WSocketURL}}");
-    ws.onopen = function(evt) {
-        console.log("Socket opened");
-        //Send configuration
-        var newInstance = new NewInstanceConfig(true, false);
-        ws.send(JSON.stringify({
-          t: EnumMessage.CONTROL,
-          s: EnumControl.NewInstance,
-          m: JSON.stringify(newInstance),
-        }));
-    }
-    ws.onclose = function(evt) {
-        console.log("Socket closed");
-        ws = null;
-    }
-    ws.onmessage = function(evt) {
-        message = JSON.parse(evt.data);
+    dc = new Connection("{{.WSocketURL}}", false, false, true);
+
+    dc.onmessage = function(inMessage) {
+        message = JSON.parse(inMessage);
         if (message.t === EnumMessage.MOVE){
             var jsonInput = JSON.parse(message.m);
             var value = jsonInput.r;
@@ -664,16 +653,15 @@
             }
             keyFaster = jsonInput.u;
             keySlower = jsonInput.d;
-        } else if (false){
+        } else if (message.t === EnumMessage.CONTROL){
+          if (message.s === EnumControl.StartClientSession){
+            dc.openchannel("racer");
+          }
 
         }else{
             console.log(message.m);
         }
     }
-    ws.onerror = function(evt) {
-        console.log("ERROR: " + evt.data);
-    }
-
 
     function reset(options) {
       options       = options || {};

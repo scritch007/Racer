@@ -53,13 +53,6 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 
 	serverConnections[id] = newServerConnection
 
-	//Send id to the server
-	_, _, err = c.ReadMessage()
-	if err != nil {
-		tools.LOG_ERROR.Println("read:", err)
-		return
-	}
-
 	defer func() {
 		c.Close()
 		//TODO notify all the clients + cleanup everyting correctly
@@ -75,8 +68,16 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 		tools.LOG_DEBUG.Printf("Server recv: %s", message)
 		mfs, err := types.MessageFromString(string(message))
 		if nil != err {
-			tools.LOG_ERROR.Println("Error deserializing message ", err)
+			tools.LOG_ERROR.Println("Invalid json received error "+string(message), err)
 			continue
+		}
+		if 0 == mfs.Type {
+			// Forward message... This is a valid json but not correct message type
+			for _, client := range newServerConnection.clients {
+				// Writing to client
+				tools.LOG_DEBUG.Println("Writing to client")
+				client.WriteMessage(mt, message)
+			}
 		}
 
 		if mfs.Type == types.EnumMessageControl {
@@ -123,10 +124,10 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		c.Close()
 		//TODO notify all the clients + cleanup everyting correctly
-		delete(serverConnections.clients, subid)
+		delete(serverSocket.clients, subid)
 	}()
 
-	if nil != serverSocket.config {
+	if nil == serverSocket.config {
 		tools.LOG_ERROR.Println("Opening connection on an empty configuration. Closing connection")
 		return
 	}
@@ -137,6 +138,19 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	serverSocket.clients[subid] = c
+	//Notify Server that the client arrived
+
+	newClientMessage := types.Message{
+		Type:    types.EnumMessageControl,
+		SubType: types.EnumControlStartClientSession,
+		Message: subid,
+	}
+	ncmj, err := newClientMessage.ToString()
+	if nil != err {
+		tools.LOG_ERROR.Println("Failed to serialize message ", err)
+		return
+	}
+	serverSocket.server.WriteMessage(1, []byte(ncmj))
 
 	for {
 		mt, message, err := c.ReadMessage()
@@ -149,14 +163,23 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 			tools.LOG_ERROR.Println("Failed to deserialize message " + string(message) + " " + err.Error())
 			continue
 		}
+		if 0 == newMssage.Type {
+			// Invalid message type forward to server
+			serverSocket.server.WriteMessage(mt, message)
+			continue
+		}
+		if !serverSocket.config.Websocket && newMssage.Type == types.EnumMessageControl {
+			tools.LOG_ERROR.Println("Received move message from client but this should be the case...")
+			continue
+		}
 
-		//TODO add the ClientId in here
+		newMssage.ClientId = subid
 		m, err := newMssage.ToString()
 		if nil != err {
 			tools.LOG_ERROR.Println("Couldn't serialize message ", err)
 			continue
 		}
-
+		tools.LOG_DEBUG.Println("Client " + subid + " send :" + m)
 		serverSocket.server.WriteMessage(mt, []byte(m))
 		//tools.LOG_DEBUG.Printf("recv: %s", message)
 	}
@@ -193,9 +216,11 @@ func server(w http.ResponseWriter, r *http.Request) {
 	values := struct {
 		WSocketURL string
 		QRCodeUrl  string
+		UserId     string
 	}{
 		WSocketURL: socketProto + "://" + r.Host + "/server.ws/" + id,
 		QRCodeUrl:  "/qrcode/" + id + ".png",
+		UserId:     id,
 	}
 	err = tmpl.Execute(w, values)
 	if nil != err {
@@ -211,6 +236,7 @@ func clientRedirect(w http.ResponseWriter, r *http.Request) {
 		subid = "7890"
 	} else {
 		subid, _ = randutil.AlphaString(20)
+		//We should ensure that we didn't already random this string for another client for this session...
 	}
 
 	proto := getProto(r, false)
@@ -230,7 +256,14 @@ func client(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	socketProto := getProto(r, true)
-	tmpl.Execute(w, socketProto+"://"+r.Host+"/client.ws/"+id+"/"+subid)
+	values := struct {
+		WebSocketUrl string
+		UserId       string
+	}{
+		WebSocketUrl: socketProto + "://" + r.Host + "/client.ws/" + id + "/" + subid,
+		UserId:       subid,
+	}
+	tmpl.Execute(w, values)
 }
 
 func qrcodeHandler(w http.ResponseWriter, r *http.Request) {

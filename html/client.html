@@ -1,71 +1,66 @@
 <!DOCTYPE html>
 <head>
 <meta charset="utf-8">
+<script>var userid = "{{.UserId}}"</script>
+<script src="/static/js/DataChannel.js"></script>
 <script src="/static/js/common.js"></script>
 <script>
 var up = false;
 var down = false;
-var ws;
+var dc;
 
 function openWs(){
-	ws = new WebSocket("{{.}}");
-	ws.onopen = function(evt) {
-		console.log("OPEN");
-	}
-	ws.onclose = function(evt) {
-		console.log("CLOSE");
-		ws = null;
-	}
-	ws.onmessage = function(evt) {
-		var jsonObject = JSON.parse(evt.data);
-		print(evt.data);
-		if (jsonObject.t==EnumMessage.MOVE){
-			if (EnumMove.Collision == jsonObject.s){
-				window.navigator.vibrate(Number(jsonObject.m));
-			}
-		}else{
-			console.log("RESPONSE: " + evt.data);
-		}
+  dc = new Connection("{{.WebSocketUrl}}", false, false, false);
 
-	}
-	ws.onerror = function(evt) {
-		console.log("ERROR: " + evt.data);
-	}
+  dc.onmessage = function(message) {
+    var jsonObject = JSON.parse(message);
+    if (jsonObject.t==EnumMessage.MOVE){
+      if (EnumMove.Collision == jsonObject.s){
+        window.navigator.vibrate(Number(jsonObject.m));
+      }
+    }else{
+      console.log("RESPONSE: " + message);
+    }
+
+  }
+  dc.onopen = function(){
+    dc.connectchannel("racer");
+  }
 }
 
 window.addEventListener("load", function(evt) {
-	openWs();
-	screen.orientation.lock('landscape');
-	document.getElementById("break").addEventListener("touchstart", touchHandlerBreak, false);
-	//document.getElementById("div").addEventListener("touchmove", touchHandler, false);
-	document.getElementById("break").addEventListener("touchend", touchHandlerBreak, false);
+  openWs();
+  screen.orientation.lock('landscape');
+  document.getElementById("break").addEventListener("touchstart", touchHandlerBreak, false);
+  //document.getElementById("div").addEventListener("touchmove", touchHandler, false);
+  document.getElementById("break").addEventListener("touchend", touchHandlerBreak, false);
 
-	document.getElementById("run").addEventListener("touchstart", touchHandlerRun, false);
-	//document.getElementById("div").addEventListener("touchmove", touchHandler, false);
-	document.getElementById("run").addEventListener("touchend", touchHandlerRun, false);
+  document.getElementById("run").addEventListener("touchstart", touchHandlerRun, false);
+  //document.getElementById("div").addEventListener("touchmove", touchHandler, false);
+  document.getElementById("run").addEventListener("touchend", touchHandlerRun, false);
 
-	function deviceOrientationListener(event) {
-		//Send to the server the current alpha
-		var newmessage = JSON.stringify({
-			t: EnumMessage.MOVE,
-			s: EnumMove.Moving,
-			m: JSON.stringify({
-				r: event.beta,
-				u: up,
-				d: down
-			})
-		})
-		ws.send(newmessage);
+  function deviceOrientationListener(event) {
+    //Send to the server the current alpha
+    var newmessage = JSON.stringify({
+      t: EnumMessage.MOVE,
+      s: EnumMove.Moving,
+      m: JSON.stringify({
+        r: event.beta,
+        u: up,
+        d: down
+      })
+    })
+    dc.send(newmessage);
   }
 
   if (window.DeviceOrientationEvent) {
-		window.addEventListener("deviceorientation", deviceOrientationListener);
+    window.addEventListener("deviceorientation", deviceOrientationListener);
   } else {
-		alert("Sorry, your browser doesn't support Device Orientation");
+    alert("Sorry, your browser doesn't support Device Orientation");
   }
 
   var output = document.getElementById("output");
-	return false;
+  return false;
 });
 
 function touchHandlerBreak(e) {
@@ -81,9 +76,9 @@ function touchHandlerBreak(e) {
 }
 
 function print(e){
-	var div = document.createElement("div");
-	div.innerHTML = e;
-	document.getElementById("debug").appendChild(div);
+  var div = document.createElement("div");
+  div.innerHTML = e;
+  document.getElementById("debug").appendChild(div);
 }
 
 function touchHandlerRun(e) {
