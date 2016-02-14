@@ -17,6 +17,8 @@ const (
 	EnumControlStartClientSession int = 1
 	EnumControlStartServerSession int = 2
 	EnumControlNewPlayerConnected int = 3
+	EnumControlCreateSession      int = 4
+	EnumControlConnectSession     int = 5
 )
 
 type Message struct {
@@ -41,4 +43,15 @@ func MessageFromString(inString string) (*Message, error) {
 		return nil, err
 	}
 	return &m, nil
+}
+
+type NewInstanceConfig struct {
+	Websocket   bool `json:"w"` // Set to false to switch to WebRtc
+	Multiplayer bool `json:"m"` // Multiple player can connect
+}
+
+func NewInstanceConfigFromString(inString string) (*NewInstanceConfig, error) {
+	c := new(NewInstanceConfig)
+	err := json.Unmarshal([]byte(inString), c)
+	return c, err
 }

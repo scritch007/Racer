@@ -634,6 +634,13 @@
     ws = new WebSocket("{{.WSocketURL}}");
     ws.onopen = function(evt) {
         console.log("Socket opened");
+        //Send configuration
+        var newInstance = new NewInstanceConfig(true, false);
+        ws.send(JSON.stringify({
+          t: EnumMessage.CONTROL,
+          s: EnumControl.NewInstance,
+          m: JSON.stringify(newInstance),
+        }));
     }
     ws.onclose = function(evt) {
         console.log("Socket closed");

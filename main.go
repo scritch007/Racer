@@ -26,8 +26,9 @@ var debug = flag.Bool("debug", false, "Turn into debug mode")
 var upgrader = websocket.Upgrader{} // use default options
 
 type serverConnection struct {
-	server *websocket.Conn
-	client *websocket.Conn
+	server  *websocket.Conn
+	clients map[string]*websocket.Conn
+	config  *types.NewInstanceConfig
 }
 
 var serverConnections map[string]*serverConnection
@@ -45,20 +46,10 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionMessage := types.Message{
-		Type:    types.EnumMessageControl,
-		SubType: types.EnumControlNewInstance,
-		Message: id,
-	}
-	m, err := sessionMessage.ToString()
-	if err != nil {
-		tools.LOG_ERROR.Println("Failed to serialize message ", m)
-	}
-
-	c.WriteMessage(1, []byte(m))
 	newServerConnection := new(serverConnection)
 	newServerConnection.server = c
-	newServerConnection.client = nil
+	newServerConnection.clients = make(map[string]*websocket.Conn)
+	newServerConnection.config = nil
 
 	serverConnections[id] = newServerConnection
 
@@ -71,41 +62,81 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		c.Close()
+		//TODO notify all the clients + cleanup everyting correctly
 		delete(serverConnections, id)
 	}()
 
 	for {
-		_, message, err := c.ReadMessage()
+		mt, message, err := c.ReadMessage()
 		if err != nil {
 			tools.LOG_ERROR.Println("read:", err)
 			break
 		}
 		tools.LOG_DEBUG.Printf("Server recv: %s", message)
-		if nil != newServerConnection.client {
-			newServerConnection.client.WriteMessage(1, message)
-		} else {
-			tools.LOG_DEBUG.Println("Client is still empty")
+		mfs, err := types.MessageFromString(string(message))
+		if nil != err {
+			tools.LOG_ERROR.Println("Error deserializing message ", err)
+			continue
 		}
+
+		if mfs.Type == types.EnumMessageControl {
+			if mfs.SubType == types.EnumControlNewInstance {
+				nic, err := types.NewInstanceConfigFromString(mfs.Message)
+				if nil != err {
+					tools.LOG_ERROR.Println("Error deserializing new Instance ", err)
+					continue
+				}
+				//Check for configuration
+				newServerConnection.config = nic
+			}
+		} else if mfs.Type == types.EnumMessageMove {
+			if 0 == len(newServerConnection.clients) {
+				tools.LOG_DEBUG.Println("Client is still empty")
+				continue
+			}
+			for _, client := range newServerConnection.clients {
+				client.WriteMessage(mt, message)
+			}
+		} else {
+			tools.LOG_ERROR.Println("Invalid type")
+		}
+
 	}
 }
 
 func clientWS(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	subid := vars["subid"]
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		tools.LOG_ERROR.Print("upgrade:", err)
 		return
 	}
-	defer c.Close()
-	serverSocket, _ := serverConnections[id]
-	if nil != serverSocket.client {
+	serverSocket, found := serverConnections[id]
+	if !found {
+		tools.LOG_ERROR.Println("Couldn't find server side")
+		c.Close()
+		return
+	}
+	defer func() {
+		c.Close()
+		//TODO notify all the clients + cleanup everyting correctly
+		delete(serverConnections.clients, subid)
+	}()
+
+	if nil != serverSocket.config {
+		tools.LOG_ERROR.Println("Opening connection on an empty configuration. Closing connection")
+		return
+	}
+
+	if 0 != len(serverSocket.clients) && !serverSocket.config.Multiplayer {
 		_, _, _ = c.ReadMessage()
 		c.WriteMessage(0, []byte("Someone is already there"))
 		return
 	}
-	serverSocket.client = c
+	serverSocket.clients[subid] = c
 
 	for {
 		mt, message, err := c.ReadMessage()
@@ -129,21 +160,25 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 		serverSocket.server.WriteMessage(mt, []byte(m))
 		//tools.LOG_DEBUG.Printf("recv: %s", message)
 	}
-	serverSocket.client = nil
 }
 
-func getWebSocketProto(r *http.Request) string {
-	var socketProto = "ws"
+func getProto(r *http.Request, websocket bool) string {
+	var resProto string
+	if websocket {
+		resProto = "ws"
+	} else {
+		resProto = "http"
+	}
 	proto := r.Header.Get("X-Forwarded-Proto")
 	tools.LOG_DEBUG.Println(proto + r.Proto)
 	if 0 != len(proto) {
 		if proto == "https" {
-			return "wss"
+			return resProto + "s"
 		}
 	} else if strings.Contains(r.Proto, "HTTPS") {
-		socketProto = "wss"
+		resProto = resProto + "s"
 	}
-	return socketProto
+	return resProto
 }
 
 func server(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +189,7 @@ func server(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	socketProto := getWebSocketProto(r)
+	socketProto := getProto(r, true)
 	values := struct {
 		WSocketURL string
 		QRCodeUrl  string
@@ -168,16 +203,34 @@ func server(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func clientRedirect(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	var subid string
+	if *debug {
+		subid = "7890"
+	} else {
+		subid, _ = randutil.AlphaString(20)
+	}
+
+	proto := getProto(r, false)
+
+	url := proto + "://" + r.Host + "/client/" + id + "/" + subid
+	tools.LOG_DEBUG.Println("Redirecting to " + url)
+	http.Redirect(w, r, url, http.StatusFound)
+}
+
 func client(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	subid := vars["subid"]
 
 	tmpl, err := template.ParseFiles("./html/client.html")
 	if err != nil {
 		panic(err)
 	}
-	socketProto := getWebSocketProto(r)
-	tmpl.Execute(w, socketProto+"://"+r.Host+"/client.ws/"+id)
+	socketProto := getProto(r, true)
+	tmpl.Execute(w, socketProto+"://"+r.Host+"/client.ws/"+id+"/"+subid)
 }
 
 func qrcodeHandler(w http.ResponseWriter, r *http.Request) {
@@ -226,10 +279,11 @@ func main() {
 	flag.Parse()
 	tools.LOG_ERROR.SetFlags(0)
 	r := mux.NewRouter()
-	r.HandleFunc("/client/{id}", client)
+	r.HandleFunc("/client/{id}", clientRedirect)
+	r.HandleFunc("/client/{id}/{subid}", client)
 	r.HandleFunc("/server/{id}", server)
 	r.HandleFunc("/server.ws/{id}", serverWS)
-	r.HandleFunc("/client.ws/{id}", clientWS)
+	r.HandleFunc("/client.ws/{id}/{subid}", clientWS)
 	r.HandleFunc("/qrcode/{id}.png", qrcodeHandler)
 	r.HandleFunc("/static/{file:.*}", serveFile)
 	r.HandleFunc("/", home)
