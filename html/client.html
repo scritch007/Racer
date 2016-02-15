@@ -64,14 +64,17 @@ window.addEventListener("load", function(evt) {
 });
 
 function touchHandlerBreak(e) {
+  var breakimg = document.getElementById("breakimg");
   if (e.type == "touchstart") {
     down = true;
     up = false;
+    breakimg.src = "/static/images/button-stop-pressed.png"
   //} else if (e.type == "touchmove") {
   //  alert("You moved your finger!");
   } else if (e.type == "touchend" || e.type == "touchcancel") {
     down = false;
     up = false;
+    breakimg.src = "/static/images/button-stop.png"
   }
 }
 
@@ -104,10 +107,10 @@ window.oncontextmenu = function(event) {
 </script>
 </head>
 <body>
-<h2>Hi, client, this is now your gamepad.</h2>
-Start Moving your gamepad to control the square on the screen
+<h2 style="width: 100%;text-align: center;">Hi, client, this is now your gamepad.</h2>
+<div style="width: 100%;text-align: center;">Start Moving your gamepad to control the square on the screen</div>
 <div style="display:flex">
-<div id="break" style="background-color:red;width:100px; height:100px"> </div>
+<div id="break"><img style="width:150px; height:150px" id="breakimg" src="/static/images/button-stop.png"/></div>
 <div style="display:flex; width:80%;"></div>
 <div id="run"><img style="width:150px; height:150px" id="runimg" src="/static/images/button-go.png"/></div>
 </div>
