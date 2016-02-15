@@ -193,7 +193,6 @@ func getProto(r *http.Request, websocket bool) string {
 		resProto = "http"
 	}
 	proto := r.Header.Get("X-Forwarded-Proto")
-	tools.LOG_DEBUG.Println(proto + r.Proto)
 	if 0 != len(proto) {
 		if proto == "https" {
 			return resProto + "s"
@@ -263,7 +262,10 @@ func client(w http.ResponseWriter, r *http.Request) {
 		WebSocketUrl: socketProto + "://" + r.Host + "/client.ws/" + id + "/" + subid,
 		UserId:       subid,
 	}
-	tmpl.Execute(w, values)
+	err = tmpl.Execute(w, values)
+	if nil != err {
+		tools.LOG_ERROR.Println("Failed to render template ", err)
+	}
 }
 
 func qrcodeHandler(w http.ResponseWriter, r *http.Request) {

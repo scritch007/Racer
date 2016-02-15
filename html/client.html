@@ -82,17 +82,25 @@ function print(e){
 }
 
 function touchHandlerRun(e) {
-  print(e);
+  //print(e);
+  var runimg = document.getElementById('runimg');
   if (e.type == "touchstart") {
     down = false;
     up = true;
+    runimg.src = "/static/images/button-go-pressed.png";
   //} else if (e.type == "touchmove") {
   //  alert("You moved your finger!");
   } else if (e.type == "touchend" || e.type == "touchcancel") {
     down = false;
     up = false;
+    runimg.src = "/static/images/button-go.png";
   }
 }
+window.oncontextmenu = function(event) {
+     event.preventDefault();
+     event.stopPropagation();
+     return false;
+};
 </script>
 </head>
 <body>
@@ -100,8 +108,8 @@ function touchHandlerRun(e) {
 Start Moving your gamepad to control the square on the screen
 <div style="display:flex">
 <div id="break" style="background-color:red;width:100px; height:100px"> </div>
-<div style="display:flex; width:100%;"></div>
-<div id="run" style="background-color:blue;width:100px; height:100px"></div>
+<div style="display:flex; width:80%;"></div>
+<div id="run"><img style="width:150px; height:150px" id="runimg" src="/static/images/button-go.png"/></div>
 </div>
 <div id="debug"></div>
 </body>
