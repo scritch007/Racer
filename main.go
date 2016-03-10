@@ -206,8 +206,9 @@ func getProto(r *http.Request, websocket bool) string {
 func server(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	game := vars["game"]
 
-	tmpl, err := template.ParseFiles("./html/index.html")
+	tmpl, err := template.ParseFiles("./" + game + "/index.html")
 	if err != nil {
 		panic(err)
 	}
@@ -216,10 +217,12 @@ func server(w http.ResponseWriter, r *http.Request) {
 		WSocketURL string
 		QRCodeUrl  string
 		UserId     string
+		Game       string
 	}{
-		WSocketURL: socketProto + "://" + r.Host + "/server.ws/" + id,
-		QRCodeUrl:  "/qrcode/" + id + ".png",
+		WSocketURL: socketProto + "://" + r.Host + "/" + game + "/server.ws/" + id,
+		QRCodeUrl:  "/" + game + "/qrcode/" + id + ".png",
 		UserId:     id,
+		Game:       game,
 	}
 	err = tmpl.Execute(w, values)
 	if nil != err {
@@ -230,6 +233,7 @@ func server(w http.ResponseWriter, r *http.Request) {
 func clientRedirect(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	game := vars["game"]
 	var subid string
 	if *debug {
 		subid = "7890"
@@ -240,7 +244,7 @@ func clientRedirect(w http.ResponseWriter, r *http.Request) {
 
 	proto := getProto(r, false)
 
-	url := proto + "://" + r.Host + "/client/" + id + "/" + subid
+	url := proto + "://" + r.Host + "/" + game + "/client/" + id + "/" + subid
 	tools.LOG_DEBUG.Println("Redirecting to " + url)
 	http.Redirect(w, r, url, http.StatusFound)
 }
@@ -249,8 +253,9 @@ func client(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	subid := vars["subid"]
+	game := vars["game"]
 
-	tmpl, err := template.ParseFiles("./html/client.html")
+	tmpl, err := template.ParseFiles("./" + game + "/client.html")
 	if err != nil {
 		panic(err)
 	}
@@ -258,9 +263,11 @@ func client(w http.ResponseWriter, r *http.Request) {
 	values := struct {
 		WebSocketUrl string
 		UserId       string
+		Game         string
 	}{
-		WebSocketUrl: socketProto + "://" + r.Host + "/client.ws/" + id + "/" + subid,
+		WebSocketUrl: socketProto + "://" + r.Host + "/" + game + "/client.ws/" + id + "/" + subid,
 		UserId:       subid,
+		Game:         game,
 	}
 	err = tmpl.Execute(w, values)
 	if nil != err {
@@ -271,13 +278,14 @@ func client(w http.ResponseWriter, r *http.Request) {
 func qrcodeHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	game := vars["game"]
 
 	var proto = "http"
 	if strings.Contains(r.Proto, "HTTPS") {
 		proto = "httpss"
 	}
 
-	qrcode, err := qr.Encode(proto+"://"+r.Host+"/client/"+id, qr.L, qr.Auto)
+	qrcode, err := qr.Encode(proto+"://"+r.Host+"/"+game+"/client/"+id, qr.L, qr.Auto)
 	if err != nil {
 		tools.LOG_ERROR.Println(err)
 	} else {
@@ -294,10 +302,13 @@ func qrcodeHandler(w http.ResponseWriter, r *http.Request) {
 func serveFile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	filePath := vars["file"]
-	http.ServeFile(w, r, "./html/"+filePath)
+	game := vars["game"]
+	http.ServeFile(w, r, "./"+game+"/"+filePath)
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	game := vars["game"]
 	var id string
 	if *debug {
 		id = "123456"
@@ -305,7 +316,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 		id, _ = randutil.AlphaString(20)
 	}
 	//Redirect the server to a new instance
-	http.Redirect(w, r, "/server/"+id, http.StatusFound)
+	http.Redirect(w, r, "/"+game+"/server/"+id, http.StatusFound)
 }
 
 func main() {
@@ -314,14 +325,14 @@ func main() {
 	flag.Parse()
 	tools.LOG_ERROR.SetFlags(0)
 	r := mux.NewRouter()
-	r.HandleFunc("/client/{id}", clientRedirect)
-	r.HandleFunc("/client/{id}/{subid}", client)
-	r.HandleFunc("/server/{id}", server)
-	r.HandleFunc("/server.ws/{id}", serverWS)
-	r.HandleFunc("/client.ws/{id}/{subid}", clientWS)
-	r.HandleFunc("/qrcode/{id}.png", qrcodeHandler)
-	r.HandleFunc("/static/{file:.*}", serveFile)
-	r.HandleFunc("/", home)
+	r.HandleFunc("/{game}/client/{id}", clientRedirect)
+	r.HandleFunc("/{game}/client/{id}/{subid}", client)
+	r.HandleFunc("/{game}/server/{id}", server)
+	r.HandleFunc("/{game}/server.ws/{id}", serverWS)
+	r.HandleFunc("/{game}/client.ws/{id}/{subid}", clientWS)
+	r.HandleFunc("/{game}/qrcode/{id}.png", qrcodeHandler)
+	r.HandleFunc("/{game}/static/{file:.*}", serveFile)
+	r.HandleFunc("/{game}/", home)
 	http.Handle("/", r)
 	tools.LOG_ERROR.Fatal(http.ListenAndServe(*addr, nil))
 }

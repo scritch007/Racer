@@ -4,7 +4,7 @@
 <head>
   <title>Racer</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-  <link href="/static/css/common.css" rel="stylesheet" type="text/css" />
+  <link href="/{{.Game}}/static/css/common.css" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
@@ -71,16 +71,16 @@
   </div>
 
   <audio id='music'>
-    <source src="/static/music/racer.ogg">
-    <source src="/static/music/racer.mp3">
+    <source src="/{{.Game}}/static/music/racer.ogg">
+    <source src="/{{.Game}}/static/music/racer.mp3">
   </audio>
   <span id="mute"></span>
 
   <script>var userid = "{{.UserId}}"</script>
-  <script src="/static/js/stats.js"></script>
-  <script src="/static/js/DataChannel.js"></script>
-  <script src="/static/js/common_racer.js"></script>
-  <script src="/static/js/common.js"></script>
+  <script src="/{{.Game}}/static/js/stats.js"></script>
+  <script src="/{{.Game}}/static/js/DataChannel.js"></script>
+  <script src="/{{.Game}}/static/js/common_racer.js"></script>
+  <script src="/{{.Game}}/static/js/common.js"></script>
   <script>
 
     var fps            = 60;                      // how many 'update' frames per second
