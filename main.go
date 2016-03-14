@@ -46,7 +46,7 @@ var serverConnections map[string]*serverConnection
 func init() {
 	serverConnections = make(map[string]*serverConnection)
 	games = make([]GameConfig, 0, 10)
-	files, err := ioutil.ReadDir(".")
+	files, err := ioutil.ReadDir("./games/")
 	if nil != err {
 		tools.LOG_ERROR.Printf("Couldn't find the folder")
 	}
@@ -58,7 +58,7 @@ func init() {
 			//Then skip it
 		} else {
 			var c GameConfig
-			configFileName := "./" + f.Name() + "/app.json"
+			configFileName := "./games/" + f.Name() + "/app.json"
 			data, err := ioutil.ReadFile(configFileName)
 			err = json.Unmarshal(data, &c)
 			if nil != err {
@@ -243,7 +243,7 @@ func server(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 	game := vars["game"]
 
-	tmpl, err := template.ParseFiles("./" + game + "/index.html")
+	tmpl, err := template.ParseFiles("./games/" + game + "/index.html")
 	if err != nil {
 		panic(err)
 	}
@@ -290,7 +290,7 @@ func client(w http.ResponseWriter, r *http.Request) {
 	subid := vars["subid"]
 	game := vars["game"]
 
-	tmpl, err := template.ParseFiles("./" + game + "/client.html")
+	tmpl, err := template.ParseFiles("./html/client.html")
 	if err != nil {
 		panic(err)
 	}
@@ -338,7 +338,12 @@ func serveFile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	filePath := vars["file"]
 	game := vars["game"]
-	http.ServeFile(w, r, "./"+game+"/"+filePath)
+	if game == "html" {
+		http.ServeFile(w, r, "./"+game+"/"+filePath)
+	} else {
+		http.ServeFile(w, r, "./games/"+game+"/"+filePath)
+	}
+
 }
 
 func gameHome(w http.ResponseWriter, r *http.Request) {

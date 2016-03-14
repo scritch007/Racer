@@ -68,13 +68,13 @@ function touchHandlerBreak(e) {
   if (e.type == "touchstart") {
     down = true;
     up = false;
-    breakimg.src = "{{.Game}}/static/images/button-stop-pressed.png"
+    breakimg.src = "/html/static/images/button-stop-pressed.png"
   //} else if (e.type == "touchmove") {
   //  alert("You moved your finger!");
   } else if (e.type == "touchend" || e.type == "touchcancel") {
     down = false;
     up = false;
-    breakimg.src = "{{.Game}}/static/images/button-stop.png"
+    breakimg.src = "/html/static/images/button-stop.png"
   }
 }
 
@@ -90,13 +90,13 @@ function touchHandlerRun(e) {
   if (e.type == "touchstart") {
     down = false;
     up = true;
-    runimg.src = "/{{.Game}}/static/images/button-go-pressed.png";
+    runimg.src = "/html/static/images/button-go-pressed.png";
   //} else if (e.type == "touchmove") {
   //  alert("You moved your finger!");
   } else if (e.type == "touchend" || e.type == "touchcancel") {
     down = false;
     up = false;
-    runimg.src = "/{{.Game}}/static/images/button-go.png";
+    runimg.src = "/html/static/images/button-go.png";
   }
 }
 window.oncontextmenu = function(event) {
@@ -110,9 +110,9 @@ window.oncontextmenu = function(event) {
 <h2 style="width: 100%;text-align: center;">Hi, client, this is now your gamepad.</h2>
 <div style="width: 100%;text-align: center;">Start Moving your gamepad to control the square on the screen</div>
 <div style="display:flex">
-<div id="break"><img style="width:150px; height:150px" id="breakimg" src="/{{.Game}}/static/images/button-stop.png"/></div>
+<div id="break"><img style="width:150px; height:150px" id="breakimg" src="/html/static/images/button-stop.png"/></div>
 <div style="display:flex; width:80%;"></div>
-<div id="run"><img style="width:150px; height:150px" id="runimg" src="/{{.Game}}/static/images/button-go.png"/></div>
+<div id="run"><img style="width:150px; height:150px" id="runimg" src="/html/static/images/button-go.png"/></div>
 </div>
 <div id="debug"></div>
 </body>
