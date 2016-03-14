@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"html/template"
 	"image/png"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -25,6 +27,14 @@ var debug = flag.Bool("debug", false, "Turn into debug mode")
 
 var upgrader = websocket.Upgrader{} // use default options
 
+type GameConfig struct {
+	Name  string `json:"name"`
+	Image string `json:"image"`
+	Game  string
+}
+
+var games []GameConfig
+
 type serverConnection struct {
 	server  *websocket.Conn
 	clients map[string]*websocket.Conn
@@ -35,6 +45,31 @@ var serverConnections map[string]*serverConnection
 
 func init() {
 	serverConnections = make(map[string]*serverConnection)
+	games = make([]GameConfig, 0, 10)
+	files, err := ioutil.ReadDir(".")
+	if nil != err {
+		tools.LOG_ERROR.Printf("Couldn't find the folder")
+	}
+	for _, f := range files {
+		if !f.IsDir() {
+			continue
+		}
+		if f.Name() == "html" || f.Name() == ".git" {
+			//Then skip it
+		} else {
+			var c GameConfig
+			configFileName := "./" + f.Name() + "/app.json"
+			data, err := ioutil.ReadFile(configFileName)
+			err = json.Unmarshal(data, &c)
+			if nil != err {
+				tools.LOG_ERROR.Fatalf("Couldn't read configuration %s, %s\n", configFileName, err.Error())
+			} else {
+				c.Game = f.Name()
+				games = games[:len(games)+1]
+				games[len(games)-1] = c
+			}
+		}
+	}
 }
 
 func serverWS(w http.ResponseWriter, r *http.Request) {
@@ -306,7 +341,7 @@ func serveFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "./"+game+"/"+filePath)
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
+func gameHome(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	game := vars["game"]
 	var id string
@@ -317,6 +352,22 @@ func home(w http.ResponseWriter, r *http.Request) {
 	}
 	//Redirect the server to a new instance
 	http.Redirect(w, r, "/"+game+"/server/"+id, http.StatusFound)
+}
+
+func home(w http.ResponseWriter, r *http.Request) {
+	values := struct {
+		Items []GameConfig
+	}{
+		Items: games,
+	}
+	tmpl, err := template.ParseFiles("html/index.html")
+	if err != nil {
+		panic(err)
+	}
+	err = tmpl.Execute(w, values)
+	if nil != err {
+		tools.LOG_ERROR.Println("Failed to render template ", err)
+	}
 }
 
 func main() {
@@ -332,7 +383,8 @@ func main() {
 	r.HandleFunc("/{game}/client.ws/{id}/{subid}", clientWS)
 	r.HandleFunc("/{game}/qrcode/{id}.png", qrcodeHandler)
 	r.HandleFunc("/{game}/static/{file:.*}", serveFile)
-	r.HandleFunc("/{game}/", home)
+	r.HandleFunc("/{game}/", gameHome)
+	r.HandleFunc("/", home)
 	http.Handle("/", r)
 	tools.LOG_ERROR.Fatal(http.ListenAndServe(*addr, nil))
 }
