@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <head>
 <meta charset="utf-8">
-<script>var userid = "{{.UserId}}"</script>
+<script>var userid = "{{.UserID}}"</script>
 <script src="/html/static/js/DataChannel.js"></script>
 <script src="/html/static/js/common.js"></script>
 <script>
@@ -10,7 +10,7 @@ var down = false;
 var dc;
 
 function openWs(){
-  dc = new Connection("{{.WebSocketUrl}}", false, false, false);
+  dc = new Connection("{{.WebSocketURL}}", false, false, false);
 
   dc.onmessage = function(message) {
     var jsonObject = JSON.parse(message);

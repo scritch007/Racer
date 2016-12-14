@@ -251,12 +251,12 @@ func server(w http.ResponseWriter, r *http.Request) {
 	values := struct {
 		WSocketURL string
 		QRCodeUrl  string
-		UserId     string
+		UserID     string
 		Game       string
 	}{
 		WSocketURL: socketProto + "://" + r.Host + "/" + game + "/server.ws/" + id,
 		QRCodeUrl:  "/" + game + "/qrcode/" + id + ".png",
-		UserId:     id,
+		UserID:     id,
 		Game:       game,
 	}
 	err = tmpl.Execute(w, values)
@@ -296,12 +296,12 @@ func client(w http.ResponseWriter, r *http.Request) {
 	}
 	socketProto := getProto(r, true)
 	values := struct {
-		WebSocketUrl string
-		UserId       string
+		WebSocketURL string
+		UserID       string
 		Game         string
 	}{
-		WebSocketUrl: socketProto + "://" + r.Host + "/" + game + "/client.ws/" + id + "/" + subid,
-		UserId:       subid,
+		WebSocketURL: socketProto + "://" + r.Host + "/" + game + "/client.ws/" + id + "/" + subid,
+		UserID:       subid,
 		Game:         game,
 	}
 	err = tmpl.Execute(w, values)
