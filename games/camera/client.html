@@ -1,0 +1,112 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <script>var userid = "{{.UserID}}"</script>
+        <script src="/html/static/js/DataChannel.js"></script>
+        <script src="/html/static/js/common.js"></script>
+        <script>
+
+        var dc = null;
+        var width = 320;
+        var height = 0;
+        var connected = false;
+
+        function openWs(){
+            dc = new Connection("{{.WebSocketURL}}", true, false, false);
+
+            dc.onmessage = function(message) {
+                var jsonObject = JSON.parse(message);
+                if (jsonObject.t === EnumMessage.CUSTOM){
+                    if (jsonObject.s === 2){
+                        var screen_size = JSON.parse(jsonObject.m);
+                        width = screen_size.w;
+                        height = screen_size.h;
+                        document.getElementById("startbutton").removeAttribute("disabled");
+                    }
+                }
+                console.log("RESPONSE: " + message);
+            }
+            dc.onopen = function(){
+                dc.connectchannel("{{.Game}}");
+                dc.send(JSON.stringify({
+                    t: EnumMessage.CUSTOM,
+                    s: 1,
+                    m: ""
+                }));
+            }
+        }
+        function init(){
+            openWs();
+
+            var streaming = false,
+            video        = document.querySelector('#video'),
+            cover        = document.querySelector('#cover'),
+            canvas       = document.querySelector('#canvas'),
+            photo        = document.querySelector('#photo'),
+            startbutton  = document.querySelector('#startbutton');
+
+
+            navigator.getMedia = ( navigator.getUserMedia ||
+                                    navigator.webkitGetUserMedia ||
+                                    navigator.mozGetUserMedia ||
+                                    navigator.msGetUserMedia);
+
+            navigator.getMedia(
+                {
+                video: true,
+                audio: false
+                },
+                function(stream) {
+                if (navigator.mozGetUserMedia) {
+                    video.mozSrcObject = stream;
+                } else {
+                    var vendorURL = window.URL || window.webkitURL;
+                    video.src = vendorURL.createObjectURL(stream);
+                }
+                video.play();
+                },
+                function(err) {
+                console.log("An error occured! " + err);
+                }
+            );
+
+            video.addEventListener('canplay', function(ev){
+                if (!streaming) {
+                    height = video.videoHeight / (video.videoWidth/width);
+                    video.setAttribute('width', width);
+                    video.setAttribute('height', height);
+                    canvas.setAttribute('width', width);
+                    canvas.setAttribute('height', height);
+                    streaming = true;
+                }
+            }, false);
+
+            function takepicture() {
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(video, 0, 0, width, height);
+                var data = canvas.toDataURL('image/png');
+                photo.setAttribute('src', data);
+                var newmessage = JSON.stringify({
+                    t: EnumMessage.CUSTOM,
+                    s: 10,
+                    m: data
+                });
+                dc.send(newmessage);
+            }
+
+            startbutton.addEventListener('click', function(ev){
+                takepicture();
+                ev.preventDefault();
+            }, false);
+
+        }
+        </script>
+    </head>
+    <body onload="init()">
+    <video id="video"></video>
+    <button id="startbutton" disabled>Prendre une photo</button>
+    <canvas id="canvas"></canvas>
+    <img src="http://placekitten.com/g/320/261" id="photo" alt="photo">
+    </body>
+</html>
