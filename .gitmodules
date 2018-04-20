@@ -1,0 +1,3 @@
+[submodule "games/AlienInvasion"]
+	path = games/AlienInvasion
+	url = https://github.com/scritch007/AlienInvasion
