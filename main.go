@@ -27,6 +27,7 @@ var debug = flag.Bool("debug", false, "Turn into debug mode")
 
 var upgrader = websocket.Upgrader{} // use default options
 
+//GameConfig the game configuration
 type GameConfig struct {
 	Name  string `json:"name"`
 	Image string `json:"image"`
@@ -87,6 +88,7 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 	newServerConnection.config = nil
 
 	serverConnections[id] = newServerConnection
+	tools.LOG_DEBUG.Printf("Adding new server connection %s\n", id)
 
 	defer func() {
 		c.Close()
@@ -133,6 +135,14 @@ func serverWS(w http.ResponseWriter, r *http.Request) {
 			for _, client := range newServerConnection.clients {
 				client.WriteMessage(mt, message)
 			}
+		} else if mfs.Type == types.EnumMessageCustom {
+			if 0 == len(newServerConnection.clients) {
+				tools.LOG_DEBUG.Println("Client is still empty")
+				continue
+			}
+			for _, client := range newServerConnection.clients {
+				client.WriteMessage(mt, message)
+			}
 		} else {
 			tools.LOG_ERROR.Println("Invalid type")
 		}
@@ -152,7 +162,7 @@ func clientWS(w http.ResponseWriter, r *http.Request) {
 	}
 	serverSocket, found := serverConnections[id]
 	if !found {
-		tools.LOG_ERROR.Println("Couldn't find server side")
+		tools.LOG_ERROR.Printf("Couldn't find server side %s\n", id)
 		c.Close()
 		return
 	}
@@ -250,14 +260,16 @@ func server(w http.ResponseWriter, r *http.Request) {
 	socketProto := getProto(r, true)
 	values := struct {
 		WSocketURL string
-		QRCodeUrl  string
+		QRCodeURL  string
 		UserID     string
 		Game       string
+		ClientURL  string
 	}{
 		WSocketURL: socketProto + "://" + r.Host + "/" + game + "/server.ws/" + id,
-		QRCodeUrl:  "/" + game + "/qrcode/" + id + ".png",
+		QRCodeURL:  "/" + game + "/qrcode/" + id + ".png",
 		UserID:     id,
 		Game:       game,
+		ClientURL:  getProto(r, false) + "://" + r.Host + "/" + game + "/client/" + id,
 	}
 	err = tmpl.Execute(w, values)
 	if nil != err {
@@ -290,7 +302,7 @@ func client(w http.ResponseWriter, r *http.Request) {
 	subid := vars["subid"]
 	game := vars["game"]
 
-	tmpl, err := template.ParseFiles("./html/client.html")
+	tmpl, err := template.ParseFiles("./games/" + game + "/client.html")
 	if err != nil {
 		panic(err)
 	}

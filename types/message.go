@@ -4,11 +4,16 @@ import (
 	"encoding/json"
 )
 
+//EnumMessageType typeof message
 type EnumMessageType int
 
 const (
+	//EnumMessageControl control type message
 	EnumMessageControl EnumMessageType = 1
-	EnumMessageMove    EnumMessageType = 2
+	//EnumMessageMove move message type
+	EnumMessageMove EnumMessageType = 2
+	//EnumMessageCustom custom message type
+	EnumMessageCustom EnumMessageType = 3
 	//EnumMessage EnumMessageType = 2
 )
 

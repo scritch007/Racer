@@ -2,7 +2,8 @@
 //This should be kept synced with the types/message.go file
 var EnumMessage = {
   CONTROL: 1,
-  MOVE: 2
+  MOVE: 2,
+  CUSTOM: 3,
 };
 
 var EnumControl={
@@ -136,7 +137,7 @@ var onJoinChannel = function() {
     }
   }
   this.onopen = function(){
-
+    console.log("stubbed onopen");
   };
 
   this.send = function(message){
